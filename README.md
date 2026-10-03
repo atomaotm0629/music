@@ -37,4 +37,5 @@ python workout_music.py --bpm 105 --drops 1              # ウォーキング・
 ## 収録済みサンプル
 
 - `output/workout_128bpm_Am.mp3` — 筋トレ・サーキット向け (約4分, ドロップ2回)
+- `output/workout_140bpm_Am.mp3` — 高強度の筋トレ・HIIT向け (約3分40秒, ドロップ2回)
 - `output/workout_150bpm_Dm.mp3` — ランニング向け (約5分, ドロップ3回)
