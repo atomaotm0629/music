@@ -22,11 +22,19 @@ pip install numpy scipy        # MP3 出力には ffmpeg も必要
 python workout_music.py                                  # 128BPM / Aマイナー / 約4分
 python workout_music.py --bpm 150 --key D --drops 3      # ランニング向け 約5分
 python workout_music.py --bpm 105 --drops 1              # ウォーキング・ストレッチ向け
+python workout_music.py --cadence 170                    # ピッチ170で走る用 (85BPM)
 ```
+
+### ランニングモード (`--cadence`)
+
+ピッチ (1分あたりの歩数) を指定すると、BPM = ピッチ ÷ 2 にして **8分音符 = 1歩** の曲を作ります。
+キック(表)とハイハット(裏)が均等に8分で刻み、ブレイクやクールダウンでも刻みが途切れないので、
+曲に足を合わせるだけで一定のピッチを保てます。
 
 | オプション | 説明 | 既定値 |
 |---|---|---|
 | `--bpm` | テンポ (目安: ウォーキング 100-120 / 筋トレ 120-140 / ランニング 150-170) | 128 |
+| `--cadence` | ランニングのピッチ (歩/分)。指定時は `--bpm` より優先 | なし |
 | `--key` | マイナーキーの主音 (C, C#, D … B) | A |
 | `--drops` | 高強度パートの回数 | 2 |
 | `--seed` | 音色の揺らぎを変える乱数シード | 1 |
@@ -39,3 +47,4 @@ python workout_music.py --bpm 105 --drops 1              # ウォーキング・
 - `output/workout_128bpm_Am.mp3` — 筋トレ・サーキット向け (約4分, ドロップ2回)
 - `output/workout_140bpm_Am.mp3` — 高強度の筋トレ・HIIT向け (約3分40秒, ドロップ2回)
 - `output/workout_150bpm_Dm.mp3` — ランニング向け (約5分, ドロップ3回)
+- `output/run_cadence170_85bpm_Em.mp3` — ピッチ170で走る用 85BPM (約6分)

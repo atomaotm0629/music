@@ -113,8 +113,9 @@ def sweep_lowpass(x, start, end, block=1024):
 # ---------------------------------------------------------------- トラック
 
 class Track:
-    def __init__(self, bpm, key, seed):
+    def __init__(self, bpm, key, seed, run=False):
         self.bpm = bpm
+        self.run = run  # ランニングモード: 8分音符 = 1歩 の刻みを曲中ずっと鳴らす
         self.beat = int(round(60 / bpm * SR))
         self.bar = self.beat * 4
         self.step = self.beat // 4  # 16 分音符
@@ -153,7 +154,12 @@ class Track:
                     self.add("kick", p, self.kick, gain)
                 if snare_on and beat in (1, 3):
                     self.add("drums", p, self.snare, 0.8 * gain)
-                if hats == "full":
+                if self.run and hats == "full":
+                    hats = "step"
+                if hats == "step":  # 8分ごとに均等な刻み (表=クローズ, 裏=オープン) で足の着地を示す
+                    self.add("drums", p, self.hat_c, 0.6 * gain)
+                    self.add("drums", p + 2 * self.step, self.hat_o, 0.7 * gain)
+                elif hats == "full":
                     self.add("drums", p + 2 * self.step, self.hat_o, 0.7 * gain)
                     for s in (1, 3):
                         self.add("drums", p + s * self.step, self.hat_c, 0.5 * gain)
@@ -240,13 +246,13 @@ class Track:
 
     def build(self, drops):
         s = self.section("ウォームアップ", 16)
-        self.drums(s, 8, snare_on=False, hats="off", gain=0.8)
+        self.drums(s, 8, snare_on=False, hats="step" if self.run else "off", gain=0.8)
         self.drums(s + 8 * self.bar, 8, snare_on=True, hats="full", gain=0.9)
         self.pad(s, 16, 300, 2500)
 
         for i in range(drops):
             s = self.section(f"ビルドアップ{i + 1}", 8)
-            self.drums(s, 8, kick_on=True, snare_on=False, hats="off")
+            self.drums(s, 8, kick_on=True, snare_on=False, hats="step" if self.run else "off")
             self.bass(s, 8, cutoff=400)
             self.pad(s, 8, 800, 6000, gain=0.2)
             self.arp(s, 8, cutoff=2000)
@@ -265,10 +271,13 @@ class Track:
                 s = self.section(f"ブレイク{i + 1} (呼吸を整える)", 16)
                 self.pad(s, 16, 4000, 800, gain=0.28)
                 self.arp(s + 8 * self.bar, 8, cutoff=1500, gain=0.14)
-                self.drums(s + 8 * self.bar, 8, kick_on=False, snare_on=False, hats="off", gain=0.6)
+                if self.run:  # 走りながらでもピッチを見失わないよう、弱めの刻みを残す
+                    self.drums(s, 16, snare_on=False, hats="step", gain=0.55)
+                else:
+                    self.drums(s + 8 * self.bar, 8, kick_on=False, snare_on=False, hats="off", gain=0.6)
 
         s = self.section("クールダウン", 16)
-        self.drums(s, 8, snare_on=False, hats="off", gain=0.8)
+        self.drums(s, 8, snare_on=False, hats="step" if self.run else "off", gain=0.8)
         self.pad(s, 16, 2500, 250, gain=0.3)
 
     def mix(self):
@@ -327,19 +336,24 @@ def fmt_time(samples):
 def main():
     ap = argparse.ArgumentParser(description="ワークアウト用 EDM トラック生成")
     ap.add_argument("--bpm", type=float, default=128, help="テンポ (ランニング 150-170 / 筋トレ 120-140 / ウォーキング 100-120)")
+    ap.add_argument("--cadence", type=float, help="ランニングのピッチ(歩/分)。指定すると BPM=ピッチ/2 で 8分音符=1歩 の曲にする")
     ap.add_argument("--key", default="A", choices=NOTE_OFFSETS.keys(), help="マイナーキーの主音")
     ap.add_argument("--drops", type=int, default=2, help="ドロップ(高強度パート)の回数")
     ap.add_argument("--seed", type=int, default=1, help="乱数シード (音色の微妙な揺らぎ)")
     ap.add_argument("--out", default="output", help="出力フォルダ")
     args = ap.parse_args()
 
-    track = Track(args.bpm, args.key, args.seed)
+    if args.cadence:
+        args.bpm = args.cadence / 2
+    track = Track(args.bpm, args.key, args.seed, run=bool(args.cadence))
     track.build(args.drops)
     audio = track.mix()
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     stem = f"workout_{int(args.bpm)}bpm_{args.key.replace('#', 's')}m"
+    if args.cadence:
+        stem = f"run_cadence{int(args.cadence)}_{stem.removeprefix('workout_')}"
     wav = out / f"{stem}.wav"
     write_wav(wav, audio)
     print(f"WAV: {wav}  ({fmt_time(len(audio))})")
